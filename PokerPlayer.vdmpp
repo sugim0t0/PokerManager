@@ -1,0 +1,35 @@
+class PokerPlayer is subclass of CommonType
+
+instance variables
+-- プレイヤーID
+id : PlayerID;
+-- 手札
+deal : set of TrumpID := {};
+inv
+   card deal <= 5;
+
+operations
+-- コンストラクタ
+-- プレイヤーIDの登録
+public PokerPlayer : PlayerID ==> PokerPlayer
+PokerPlayer(nid) ==
+   id := nid;
+
+-- 手札(deal)の登録
+public setDeal : set of TrumpID ==> ()
+setDeal(nids) ==
+   deal := nids
+pre
+   card nids = 5
+post
+   card deal = 5;
+
+public pure getID : () ==> PlayerID
+getID() ==
+   return id;
+
+public pure getDeal : () ==> set of TrumpID
+getDeal() ==
+   return deal;
+
+end PokerPlayer

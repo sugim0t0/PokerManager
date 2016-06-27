@@ -1,0 +1,421 @@
+-- ポーカー(ゲーム)管理クラス
+class PokerManager is subclass of CommonType
+
+instance variables
+
+-- トランプIDからトランプへの写像
+trumps : map TrumpID to Trump := {|->};
+inv
+   forall id in set dom trumps & id = trumps(id).getID()
+      and
+   -- 同じSuit, 同じNumberのトランプは含まれない
+   forall id1, id2 in set dom trumps &
+      id1 <> id2 => (trumps(id1).getNumber() <> trumps(id2).getNumber())
+                       or
+                    (trumps(id1).getSuit() <> trumps(id2).getSuit());
+
+-- プレイヤーIDからプレイヤーへの写像
+players : map PlayerID to PokerPlayer := {|->};
+inv
+   forall id in set dom players & id = players(id).getID();
+
+operations
+
+-- トランプ情報を追加する
+public addTrump : Trump ==> ()
+addTrump(trump) ==
+   trumps := trumps munion {trump.getID() |-> trump}
+pre
+   trump.getID() not in set dom trumps;
+
+-- トランプ情報を取得する
+public getTrump : TrumpID ==> Trump
+getTrump(id) ==
+   return trumps(id)
+pre
+   id in set dom trumps;
+
+-- プレイヤー情報を追加する
+public addPlayer : PokerPlayer ==> ()
+addPlayer(player) ==
+   players := players munion {player.getID() |-> player}
+pre
+   player.getID() not in set dom players;
+   
+-- プレイヤー情報を削除する
+public delPlayer : PlayerID ==> ()
+delPlayer(id) ==
+   players := {id} <-: players
+pre
+   id in set dom players
+post
+   id not in set dom players;
+
+-- プレイヤー情報を取得する
+public getPlayer : PlayerID ==> PokerPlayer
+getPlayer(id) ==
+   return players(id)
+pre
+   id in set dom players;
+
+-- プレイヤーに手札を登録する
+public setPlayerDeal : PlayerID * set of TrumpID ==> ()
+setPlayerDeal(pid, tids) ==
+   players(pid).setDeal(tids)
+pre
+   pid in set dom players
+      and
+   -- 登録する手札が他のプレイヤーの手札に含まれない
+   forall tid in set tids &
+      forall other_pid in set (dom players \ {pid}) &
+         tid not in set players(other_pid).getDeal();
+
+-- 手役の判定
+-- https://www.nintendo.co.jp/n09/trump_games/poker/
+public pure judgeHand : PlayerID ==> Hand
+judgeHand(pid) ==
+def
+   -- 手札
+   deal : set of TrumpID = players(pid).getDeal();
+   -- 手札内トランプの数字の集合
+   nums_deal : set of nat = {trumps(id).getNumber() | id in set deal};
+   
+   -- <各手役の性質判定> --
+   -- フォアカード判定
+   -- (性質)あるカードの数字と同じ数字のカードが他に3枚ある
+   b_four_card : bool = exists id in set deal &
+                           card {other_id | other_id in set (deal \ {id}) &
+                              trumps(other_id).getNumber() =
+                                 trumps(id).getNumber()} = 3;
+   -- スリーカード判定
+   -- (性質)あるカードの数字と同じ数字のカードが他に2枚ある
+   b_three_card : bool = exists id in set deal &
+                            card {other_id | other_id in set (deal \ {id}) &
+                               trumps(other_id).getNumber() =
+                                  trumps(id).getNumber()} = 2;
+   -- フルハウス判定
+   -- (性質)スリーカードの性質を満たしつつカードの数の種類が2種類
+   b_full_house : bool = b_three_card and (card nums_deal = 2);
+   -- フラッシュ判定
+   -- (性質)全てのカードの柄(Suit)が同じ
+   b_flush : bool = forall t1, t2 in set deal &
+                       t1 <> t2 => trumps(t1).getSuit() = trumps(t2).getSuit();
+   -- ロイヤルストレートフラッシュ判定
+   -- (性質)フラッシュの性質を満たしつつ10, 11, 12, 13, 1の数のカードを持つ
+   b_royal_straight_flush : bool = (b_flush and (nums_deal = {10,11,12,13,1}));
+   -- ストレート判定
+   -- (性質)カードの数が全部異なり(5種類あり)且つ全ての数の差が5未満
+   b_straight : bool = (card nums_deal = 5)
+                          and
+                       forall t1, t2 in set deal &
+                          trumps(t1).getNumber() > trumps(t2).getNumber() =>
+                             (trumps(t1).getNumber() - trumps(t2).getNumber()) < 5;
+   -- ストレートフラッシュ判定
+   -- (性質)フラッシュの性質を満たしつつストレートの性質を満たす
+   b_straight_flush : bool = b_flush and b_straight;
+   -- ツウペア判定
+   -- (性質)スリーカードの性質を満たしていない且つカードの数の種類が3種類
+   b_two_pair : bool = (not b_three_card) and (card nums_deal = 3)
+   -- ワンペア判定
+   -- (性質)カードの数の種類が4種類
+   b_one_pair : bool = (card nums_deal = 4);
+in
+(
+   return
+      if b_royal_straight_flush
+         then <ROYAL_STRAIGHT_FLUSH>
+      else if b_straight_flush
+         then <STRAIGHT_FLUSH>
+      else if b_four_card
+         then <FOUR_CARD>
+      else if b_full_house
+         then <FULL_HOUSE>
+      else if b_flush
+         then <FLUSH>
+      else if b_straight
+         then <STRAIGHT>
+      else if b_three_card
+         then <THREE_CARD>
+      else if b_two_pair
+         then <TWO_PAIR>
+      else if b_one_pair
+         then <ONE_PAIR>
+      else
+         <GARBAGE>;
+)
+pre
+   pid in set dom players
+      and
+   -- プレイヤーの手札が登録済
+   card players(pid).getDeal() = 5;
+
+-- 勝者の判定
+public pure judgeWinner : set of PlayerID ==> set of PlayerID
+judgeWinner(pids) ==
+def
+   -- 手役が最も高いプレイヤーの集合
+   highest_hand_ids : set of PlayerID =
+      {i | i in set pids & forall j in set pids &
+           getHandStrength(judgeHand(i)) >= getHandStrength(judgeHand(j))};
+in
+(
+   -- 手役が最も高いプレイヤーの集合の中からプレイヤーIDを非決定的に1個選ぶ
+   dcl hand : Hand := judgeHand(getNonSelectivePlayerID(highest_hand_ids));
+   if card highest_hand_ids = 1
+      then return highest_hand_ids
+   else
+      -- 手役が最も高いプレイヤーが複数いた場合の判定処理
+      cases hand:
+      <FOUR_CARD>,<FULL_HOUSE>,<THREE_CARD> ->
+         return judgeWinner_ThreeCard(highest_hand_ids),
+      <TWO_PAIR> -> return judgeWinner_TwoPair(highest_hand_ids),
+      <ONE_PAIR> -> return judgeWinner_OnePair(highest_hand_ids),
+      <ROYAL_STRAIGHT_FLUSH>,<STRAIGHT_FLUSH>,<STRAIGHT>,<FLUSH> ->
+         return judgeWinner_Others(highest_hand_ids),
+      others -> return {}
+      end;
+)
+pre
+   forall id in set pids & id in set dom players;
+
+-- 同一手役内での勝者の判定
+-- スリーカード, フォアカード, フルハウスの場合
+public pure judgeWinner_ThreeCard : set of PlayerID ==> set of PlayerID
+judgeWinner_ThreeCard(pids) ==
+def
+   -- 一番強い数字を持つプレイヤーの集合
+   -- スリーカードの性質を満たすトランプの集合の数字を見る
+   strongest_num_pids : set of PlayerID =
+      {i | i in set pids &
+         forall j in set pids &
+            getNumStrength(
+               getStrongestNumber({t1 | t1 in set players(i).getDeal() &
+                  card {t2 | t2 in set players(i).getDeal() &
+                     trumps(t1).getNumber() = trumps(t2).getNumber()} >= 3}))
+               >=
+            getNumStrength(
+               getStrongestNumber({t1 | t1 in set players(j).getDeal() &
+                  card {t2 | t2 in set players(j).getDeal() &
+                     trumps(t1).getNumber() = trumps(t2).getNumber()} >= 3}))};
+in
+(
+   return strongest_num_pids
+)
+pre
+   forall id in set pids & id in set dom players;
+
+-- 同一手役内での勝者の判定
+-- ツーペアの場合
+public pure judgeWinner_TwoPair : set of PlayerID ==> set of PlayerID
+judgeWinner_TwoPair(pids) ==
+def
+   -- 一番強い数字を持つプレイヤーの集合
+   -- ツーペアの性質を満たすトランプの集合のうち高い方の数字を見る
+   first_strongest_num_pids : set of PlayerID =
+      {i | i in set pids &
+         forall j in set pids &
+            getNumStrength(
+               getStrongestNumber({t1 | t1 in set players(i).getDeal() &
+                  card {t2 | t2 in set players(i).getDeal() &
+                     trumps(t1).getNumber() = trumps(t2).getNumber()} >= 2}))
+               >=
+            getNumStrength(
+               getStrongestNumber({t1 | t1 in set players(j).getDeal() &
+                  card {t2 | t2 in set players(j).getDeal() &
+                     trumps(t1).getNumber() = trumps(t2).getNumber()} >= 2}))};
+   -- 上記集合の中でツーペアの性質を満たすトランプの集合のうち低い方の数字を見る
+   second_strongest_num_pids : set of PlayerID =
+      {i | i in set first_strongest_num_pids &
+         forall j in set first_strongest_num_pids &
+            getNumStrength(
+               getWeakestNumber({t1 | t1 in set players(i).getDeal() &
+                  card {t2 | t2 in set players(i).getDeal() &
+                     trumps(t1).getNumber() = trumps(t2).getNumber()} >= 2}))
+               >=
+            getNumStrength(
+               getWeakestNumber({t1 | t1 in set players(j).getDeal() &
+                  card {t2 | t2 in set players(j).getDeal() &
+                     trumps(t1).getNumber() = trumps(t2).getNumber()} >= 2}))};
+in
+(
+   return
+      if card second_strongest_num_pids = 1
+         then second_strongest_num_pids
+         -- ツーペアの数字が両方とも同じプレイヤーが2人いる場合は
+         -- 数字が高い方のペアのスペードを持つ方が勝ち
+         else {pid | pid in set second_strongest_num_pids &
+                 exists t1 in set players(pid).getDeal() &
+                    card {t2 | t2 in set players(pid).getDeal() &
+                       trumps(t1).getNumber() = trumps(t2).getNumber()} >= 2
+                          and
+                       trumps(t1).getNumber() = getStrongestNumber({t3 | t3 in set players(pid).getDeal() &
+                          card {t4 | t4 in set players(pid).getDeal() &
+                             trumps(t3).getNumber() = trumps(t4).getNumber()} >= 2})
+                          and
+                       trumps(t1).getSuit() = <SPADE>}
+)
+pre
+   forall id in set pids & id in set dom players;
+
+-- 同一手役内での勝者の判定
+-- ワンペアの場合
+public pure judgeWinner_OnePair : set of PlayerID ==> set of PlayerID
+judgeWinner_OnePair(pids) ==
+def
+   -- 一番強い数字を持つプレイヤーの集合
+   -- ワンペアの性質を満たすトランプの集合の数字を見る
+   strongest_num_pids : set of PlayerID =
+      {i | i in set pids &
+         forall j in set pids &
+            getNumStrength(
+               getStrongestNumber({t1 | t1 in set players(i).getDeal() &
+                  card {t2 | t2 in set players(i).getDeal() &
+                     trumps(t1).getNumber() = trumps(t2).getNumber()} >= 2}))
+               >=
+            getNumStrength(
+               getStrongestNumber({t1 | t1 in set players(j).getDeal() &
+                  card {t2 | t2 in set players(j).getDeal() &
+                     trumps(t1).getNumber() = trumps(t2).getNumber()} >= 2}))};
+in
+(
+   return
+      if card strongest_num_pids = 1
+         then strongest_num_pids
+         -- ワンペアの数字も同じ場合はスペードを持つ方が勝ち
+         else {pid | pid in set strongest_num_pids &
+                 exists t1 in set players(pid).getDeal() &
+                    card {t2 | t2 in set players(pid).getDeal() &
+                       trumps(t1).getNumber() = trumps(t2).getNumber()} >= 2
+                          and
+                       trumps(t1).getSuit() = <SPADE>}
+)
+pre
+   forall id in set pids & id in set dom players;
+
+-- 同一手役内での勝者の判定
+-- 上記以外
+public pure judgeWinner_Others : set of PlayerID ==> set of PlayerID
+judgeWinner_Others(pids) ==
+def
+   -- 一番強い数字を持つプレイヤーの集合
+   strongest_num_pids : set of PlayerID =
+      {i | i in set pids &
+           forall j in set pids &
+              getNumStrength(getStrongestNumber(players(i).getDeal()))
+                 >=
+              getNumStrength(getStrongestNumber(players(j).getDeal()))};
+   -- 一番強い数字を持つプレイヤーの中で一番強い柄(Suit)を持つプレイヤーの集合
+   strongest_suit_pids : set of PlayerID =
+      {i | i in set strongest_num_pids &
+           forall j in set strongest_num_pids &
+              getSuitStrength(getStrongestSuit(players(i).getDeal()))
+                 >=
+              getSuitStrength(getStrongestSuit(players(j).getDeal()))};
+in
+(
+   return strongest_suit_pids
+)
+pre
+   forall id in set pids & id in set dom players;
+
+-- 複数枚のトランプの中で一番強い数字を取得する
+public pure getStrongestNumber : set of TrumpID ==> nat
+getStrongestNumber(tids) ==
+def
+   stids : set of TrumpID = {i | i in set tids &
+                                 forall j in set tids &
+                                    getNumStrength(trumps(i).getNumber())
+                                       >=
+                                    getNumStrength(trumps(j).getNumber())};
+in
+(
+   return trumps(getNonSelectiveTrumpID(stids)).getNumber();
+)
+pre
+   forall tid in set tids & tid in set dom trumps;
+
+-- 複数枚のトランプの中で一番弱い数字を取得する
+public pure getWeakestNumber : set of TrumpID ==> nat
+getWeakestNumber(tids) ==
+def
+   wtids : set of TrumpID = {i | i in set tids &
+                                 forall j in set tids &
+                                    getNumStrength(trumps(i).getNumber())
+                                       <=
+                                    getNumStrength(trumps(j).getNumber())};
+in
+(
+   return trumps(getNonSelectiveTrumpID(wtids)).getNumber();
+)
+pre
+   forall tid in set tids & tid in set dom trumps;
+
+-- 複数枚のトランプの中で一番強い柄(Suit)を取得する
+public pure getStrongestSuit : set of TrumpID ==> Suit
+getStrongestSuit(tids) ==
+def
+   stids : set of TrumpID = {i | i in set tids &
+                                 forall j in set tids &
+                                    getSuitStrength(trumps(i).getSuit())
+                                       >=
+                                    getSuitStrength(trumps(j).getSuit())};
+in
+(
+   return trumps(getNonSelectiveTrumpID(stids)).getSuit();
+)
+pre
+   forall tid in set tids & tid in set dom trumps;
+
+-- 引数で入力されたトランプID集合から非決定的にトランプIDを一つ選択して返す
+public pure getNonSelectiveTrumpID : set of TrumpID ==> TrumpID
+getNonSelectiveTrumpID(ids) ==
+let id in set ids in
+   return id;
+
+-- 引数で入力されたプレイヤーID集合から非決定的にプレイヤーIDを一つ選択して返す
+public pure getNonSelectivePlayerID : set of PlayerID ==> PlayerID
+getNonSelectivePlayerID(ids) ==
+let id in set ids in
+   return id;
+
+functions
+
+-- 手役の強さを取得
+public getHandStrength : Hand -> nat
+getHandStrength(hand) ==
+   cases hand:
+   <ROYAL_STRAIGHT_FLUSH> -> 10,
+   <STRAIGHT_FLUSH> -> 9,
+   <FOUR_CARD> -> 8,
+   <FULL_HOUSE> -> 7,
+   <FLUSH> -> 6,
+   <STRAIGHT> -> 5,
+   <THREE_CARD> -> 4,
+   <TWO_PAIR> -> 3,
+   <ONE_PAIR> -> 2,
+   <GARBAGE> -> 1,
+   others -> 0
+   end;
+
+-- 数字の強さを取得
+-- A(エース)が一番強い (それ以外はそのままの数字が強さ)
+public getNumStrength : nat -> nat
+getNumStrength(num) ==
+   cases num:
+   1 -> 14,
+   others -> num
+   end;
+
+-- 柄(Suit)の強さを取得
+-- スペード > ハート > ダイア > クラブ
+public getSuitStrength : Suit -> nat
+getSuitStrength(suit) ==
+   cases suit:
+   <SPADE> -> 4,
+   <HEART> -> 3,
+   <DIAMOND> -> 2,
+   <CLUB> -> 1,
+   others -> 0
+   end;
+
+end PokerManager

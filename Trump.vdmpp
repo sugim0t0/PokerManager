@@ -1,0 +1,33 @@
+-- トランプ情報を表すクラス
+class Trump is subclass of CommonType
+
+instance variables
+id     : TrumpID;
+suit   : Suit;
+number : nat;
+
+operations
+-- コンストラクタ
+public Trump : TrumpID * Suit * nat ==> Trump
+Trump(nid, nsuit, nnumber) ==
+   atomic(
+      id := nid;
+      suit := nsuit;
+      number := nnumber;
+   )
+pre
+   (nnumber >= 1 and nnumber <= 13);
+
+public pure getID : () ==> TrumpID
+getID() ==
+   return id;
+
+public pure getSuit : () ==> Suit
+getSuit() ==
+   return suit;
+
+public pure getNumber : () ==> nat
+getNumber() ==
+   return number;
+
+end Trump

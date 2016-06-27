@@ -1,0 +1,12 @@
+-- 共通の型定義を行うクラス
+class CommonType
+types
+
+public TrumpID = token;
+public PlayerID = token;
+public Suit = <SPADE> | <HEART>| <DIAMOND> | <CLUB>;
+public Hand = <ROYAL_STRAIGHT_FLUSH> | <STRAIGHT_FLUSH> |
+              <FOUR_CARD> | <FULL_HOUSE> | <FLUSH> | <STRAIGHT> |
+              <THREE_CARD> | <TWO_PAIR> | <ONE_PAIR> | <GARBAGE>;
+
+end CommonType
