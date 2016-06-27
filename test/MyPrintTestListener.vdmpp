@@ -1,0 +1,31 @@
+class MyPrintTestListener is subclass of TestListener
+operations
+
+    public initListener: () ==> ()
+    initListener () == skip;
+
+    public exitListener: () ==> ()
+    exitListener () == skip;
+
+    public addFailure: Test * AssertionFailedError ==> ()
+    addFailure (-, failError) ==
+        if failError.hasMessage() then
+            print("  assertion failure: " ^ failError.getMessage())
+        else
+            print("  assertion failure: no message defined");
+
+    public addError: Test * Throwable ==> ()
+    addError (-, -) == skip;
+
+    public startTest: Test ==> ()
+    startTest (test) ==
+        print("Start test - " ^ test.getName());
+
+    public endTest: Test ==> ()
+    endTest (test) ==
+        print("End test   - " ^ test.getName());
+
+    public print : seq of char ==> ()
+    print(str) == IO`print(str ^ "\n");
+
+end MyPrintTestListener

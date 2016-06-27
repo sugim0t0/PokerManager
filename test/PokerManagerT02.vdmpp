@@ -1,0 +1,108 @@
+class PokerManagerT02 is subclass of TestCase, CommonType
+instance variables
+
+man : PokerManager := new PokerManager();
+
+operations
+
+public PokerManagerT02 : () ==> PokerManagerT02
+PokerManagerT02() == TestCase("T02");
+
+public PokerManagerT02 : seq of char ==> PokerManagerT02
+PokerManagerT02(str) == TestCase(str);
+
+public setUp : () ==> ()
+setUp() == (
+    man := new PokerManager();
+
+    -- トランプの登録
+    man.addTrump(new Trump(mk_token("S_A"), <SPADE>, 1));
+    -- (1) 同じ柄、同じ数字のトランプ情報追加
+    -- man.addTrump(new Trump(mk_token("S_1"), <SPADE>, 1));
+    man.addTrump(new Trump(mk_token("S_2"), <SPADE>, 2));
+    man.addTrump(new Trump(mk_token("S_3"), <SPADE>, 3));
+    man.addTrump(new Trump(mk_token("S_4"), <SPADE>, 4));
+    man.addTrump(new Trump(mk_token("S_5"), <SPADE>, 5));
+    man.addTrump(new Trump(mk_token("S_6"), <SPADE>, 6));
+    man.addTrump(new Trump(mk_token("S_7"), <SPADE>, 7));
+    man.addTrump(new Trump(mk_token("S_8"), <SPADE>, 8));
+    man.addTrump(new Trump(mk_token("S_9"), <SPADE>, 9));
+    man.addTrump(new Trump(mk_token("S_10"), <SPADE>, 10));
+    man.addTrump(new Trump(mk_token("S_J"), <SPADE>, 11));
+    man.addTrump(new Trump(mk_token("S_Q"), <SPADE>, 12));
+    man.addTrump(new Trump(mk_token("S_K"), <SPADE>, 13));
+    
+    man.addTrump(new Trump(mk_token("H_A"), <HEART>, 1));
+    man.addTrump(new Trump(mk_token("H_2"), <HEART>, 2));
+    man.addTrump(new Trump(mk_token("H_3"), <HEART>, 3));
+    man.addTrump(new Trump(mk_token("H_4"), <HEART>, 4));
+    man.addTrump(new Trump(mk_token("H_5"), <HEART>, 5));
+    man.addTrump(new Trump(mk_token("H_6"), <HEART>, 6));
+    man.addTrump(new Trump(mk_token("H_7"), <HEART>, 7));
+    man.addTrump(new Trump(mk_token("H_8"), <HEART>, 8));
+    man.addTrump(new Trump(mk_token("H_9"), <HEART>, 9));
+    man.addTrump(new Trump(mk_token("H_10"), <HEART>, 10));
+    man.addTrump(new Trump(mk_token("H_J"), <HEART>, 11));
+    man.addTrump(new Trump(mk_token("H_Q"), <HEART>, 12));
+    man.addTrump(new Trump(mk_token("H_K"), <HEART>, 13));
+    
+    man.addTrump(new Trump(mk_token("D_A"), <DIAMOND>, 1));
+    man.addTrump(new Trump(mk_token("D_2"), <DIAMOND>, 2));
+    man.addTrump(new Trump(mk_token("D_3"), <DIAMOND>, 3));
+    man.addTrump(new Trump(mk_token("D_4"), <DIAMOND>, 4));
+    man.addTrump(new Trump(mk_token("D_5"), <DIAMOND>, 5));
+    man.addTrump(new Trump(mk_token("D_6"), <DIAMOND>, 6));
+    man.addTrump(new Trump(mk_token("D_7"), <DIAMOND>, 7));
+    man.addTrump(new Trump(mk_token("D_8"), <DIAMOND>, 8));
+    man.addTrump(new Trump(mk_token("D_9"), <DIAMOND>, 9));
+    man.addTrump(new Trump(mk_token("D_10"), <DIAMOND>, 10));
+    man.addTrump(new Trump(mk_token("D_J"), <DIAMOND>, 11));
+    man.addTrump(new Trump(mk_token("D_Q"), <DIAMOND>, 12));
+    man.addTrump(new Trump(mk_token("D_K"), <DIAMOND>, 13));
+    
+    man.addTrump(new Trump(mk_token("C_A"), <CLUB>, 1));
+    man.addTrump(new Trump(mk_token("C_2"), <CLUB>, 2));
+    man.addTrump(new Trump(mk_token("C_3"), <CLUB>, 3));
+    man.addTrump(new Trump(mk_token("C_4"), <CLUB>, 4));
+    man.addTrump(new Trump(mk_token("C_5"), <CLUB>, 5));
+    man.addTrump(new Trump(mk_token("C_6"), <CLUB>, 6));
+    man.addTrump(new Trump(mk_token("C_7"), <CLUB>, 7));
+    man.addTrump(new Trump(mk_token("C_8"), <CLUB>, 8));
+    man.addTrump(new Trump(mk_token("C_9"), <CLUB>, 9));
+    man.addTrump(new Trump(mk_token("C_10"), <CLUB>, 10));
+    man.addTrump(new Trump(mk_token("C_J"), <CLUB>, 11));
+    man.addTrump(new Trump(mk_token("C_Q"), <CLUB>, 12));
+    man.addTrump(new Trump(mk_token("C_K"), <CLUB>, 13));
+);
+
+public runTest : () ==> ()
+runTest() ==
+  (
+    -- プレイヤーの登録
+    man.addPlayer(new PokerPlayer(mk_token("Sugimoto")));
+    -- (2) 同一プレイヤー情報の登録
+    -- man.addPlayer(new PokerPlayer(mk_token("Sugimoto")));
+    man.addPlayer(new PokerPlayer(mk_token("Ichimatsu")));
+    man.addPlayer(new PokerPlayer(mk_token("Osomatsu")));
+    man.addPlayer(new PokerPlayer(mk_token("Karamatsu")));
+    man.addPlayer(new PokerPlayer(mk_token("Jushimatsu")));
+    man.addPlayer(new PokerPlayer(mk_token("Todomatsu")));
+    man.addPlayer(new PokerPlayer(mk_token("Choromatsu")));
+    
+    -- 手札の登録
+    man.setPlayerDeal(mk_token("Sugimoto"),
+       {mk_token("C_2"), mk_token("C_3"), mk_token("C_4"), mk_token("C_5"), mk_token("C_7")});
+    -- (3) 他のプレイヤーが使用中の手札(C_5)の登録
+    -- man.setPlayerDeal(mk_token("Ichimatsu"),
+    --    {mk_token("C_5"), mk_token("S_7"), mk_token("D_8"), mk_token("D_9"), mk_token("S_10")});
+    -- (4) 手札を6枚登録
+    -- man.setPlayerDeal(mk_token("Ichimatsu"),
+    --    {mk_token("D_A"), mk_token("C_6"), mk_token("S_7"),
+    --     mk_token("D_8"), mk_token("D_9"), mk_token("S_10")});
+  );
+
+public tearDown : () ==> ()
+tearDown() == 
+  skip;
+
+end PokerManagerT02

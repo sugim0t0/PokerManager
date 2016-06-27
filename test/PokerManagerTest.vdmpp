@@ -1,0 +1,19 @@
+-- PokerManagerクラスのテスト定義クラス
+class PokerManagerTest
+
+operations
+
+public static execute : () ==> ()
+execute() == (
+    dcl suite : TestSuite := new TestSuite("Poker Manager Test"),
+        result : TestResult := new TestResult();
+    
+    result.addListener(new MyPrintTestListener());
+
+    suite.addTest(new PokerManagerT01("case01 - no problem"));
+    -- suite.addTest(new PokerManagerT02("case02 - assertion failure"));
+
+    suite.run(result);
+);
+
+end PokerManagerTest
